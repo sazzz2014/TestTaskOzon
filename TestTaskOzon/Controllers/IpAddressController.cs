@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace TestTaskOzon.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/[controller]")]
     public class IpAddressController : ControllerBase
     {
         private IpAddressContext context { get; set; }
@@ -21,22 +21,30 @@ namespace TestTaskOzon.Controllers
         public IEnumerable<IpAddress> Get(string from, string to)
         {
             if (from == null || to == null)
-                return null;
+                throw new Exception("Некорректно указаны параметры запроса");
+
             var contextIpAddressDiapazon = context.IpAddressDiapazon.Find(from, to);
             if (contextIpAddressDiapazon != null && contextIpAddressDiapazon.DiapazonString != null)
             {
-                return JsonSerializer.Deserialize<List<IpAddress>>(contextIpAddressDiapazon.DiapazonString);
+                var ipAddressDiapazonInDb = contextIpAddressDiapazon.DiapazonString
+                    .Substring(1, contextIpAddressDiapazon.DiapazonString.Length - 2)
+                    .Split(",")
+                    .Select(_ => new IpAddress(_.Substring(1, _.Length - 2)));
+                return ipAddressDiapazonInDb;
             }
             var ipAddressDiapazon = new IpAddressDiapazon(from, to);
-            var f = GetIpAddresses(ipAddressDiapazon);
             return GetIpAddresses(ipAddressDiapazon);
         }
+        /// <summary>
+        /// Получаем список всех адресов в заданном диапазоне
+        /// </summary>
+        /// <param name="diapazon"></param>
+        /// <returns></returns>
         public IEnumerable<IpAddress> GetIpAddresses(IpAddressDiapazon diapazon)
         {
             while (true)
             {
-                AddOneIp(diapazon.Current);
-                var newIp = new IpAddress(diapazon.Current.Ip);
+                var newIp = AddOneIp(diapazon.Current);
                 if (newIp.Equals(diapazon.End))
                 {
                     diapazon.DiapazonString = JsonSerializer.Serialize(diapazon.Diapazon.Select(_ => _.Address));
@@ -47,31 +55,35 @@ namespace TestTaskOzon.Controllers
                 diapazon.Diapazon.Add(newIp);
             }
         }
-
-        public void AddOneIp(IpAddress Ip)
+        /// <summary>
+        /// Увеличиваем текущее значение ip-адреса на один
+        /// </summary>
+        /// <param name="ip"></param>
+        /// <returns></returns>
+        public IpAddress AddOneIp(IpAddress ip)
         {
-            for (int i = Ip.Ip.Length - 1; i >= 0; i--)
+            for (int i = ip.Ip.Length - 1; i >= 0; i--)
             {
-                if (Ip.Ip[i] != byte.MaxValue)
+                if (ip.Ip[i] != byte.MaxValue)
                 {
-                    Ip.Ip[i] += 1;
-                    return;
+                    ip.Ip[i] += 1;
+                    break;
                 }
                 else
                 {
-                    for (int j = Ip.Ip.Length - 1; j >= 0; j--)
+                    for (int j = ip.Ip.Length - 1; j >= 0; j--)
                     {
-                        if (Ip.Ip[j] == byte.MaxValue)
+                        if (ip.Ip[j] == byte.MaxValue)
                         {
-                            Ip.Ip[j] += 1;
+                            ip.Ip[j] += 1;
                             continue;
                         }
-                        Ip.Ip[j] += 1;
-                        return;
+                        ip.Ip[j] += 1;
+                        break;
                     }
                 }
-
             }
+            return new IpAddress(ip.Ip);
         }
     }
 }

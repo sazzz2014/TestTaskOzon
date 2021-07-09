@@ -8,9 +8,6 @@ namespace TestTaskOzon
 {
     public class IpAddress : IEquatable<IpAddress>
     {
-        public IpAddress()
-        {
-        }
         public IpAddress(byte[] ip)
         {
             Ip = (byte[])ip.Clone();
@@ -19,6 +16,7 @@ namespace TestTaskOzon
         public IpAddress(string ip)
         {
             Ip = ip.ParseIp();
+            Address = $"{Ip[0]}.{Ip[1]}.{Ip[2]}.{Ip[3]}";
         }
 
         public bool Equals([AllowNull] IpAddress other)
@@ -29,12 +27,10 @@ namespace TestTaskOzon
                 && Ip[3] == other.Ip[3];
         }
         internal byte[] Ip { get; set; }
-        internal string Address { get; set; }
+        public string Address { get; set; }
     }
     public static class IpAddressExtension
     {
-
-
         public static byte[] ParseIp(this string ip)
         {
             try
